@@ -1,408 +1,159 @@
-; 在DOSBox 80x25模式下显示HUAWEI
-; H-U-A-W-E各占15列，I占5列
-
-code segment
-    assume cs:code, ds:code
-    org 100h
-
-start:
-    ; 设置80x25文本模式
-    mov ax, 0003h
-    int 10h
+; HUAWEI 显示程序 - 直接字符阵列方式
+.MODEL SMALL
+.STACK 100H
+.DATA
+    ; 80x25 屏幕缓冲区 (2000字节)
+    screen DB 2000 DUP(0)
     
-    ; 设置数据段
-    mov ax, cs
-    mov ds, ax
+    ; HUAWEI 字符图案定义
+    ; 每个字母7行高，按列分配: H(15),U(15),A(15),W(15),E(15),I(5)
+    
+huawei_pattern:
+    ; H - 15列 (0-14)
+    DB 1,0,0,0,0,0,0,0,1,0,0,0,0,0,0  ; 行1: █         █
+    DB 1,0,0,0,0,0,0,0,1,0,0,0,0,0,0  ; 行2: █         █
+    DB 1,0,0,0,0,0,0,0,1,0,0,0,0,0,0  ; 行3: █         █
+    DB 1,1,1,1,1,1,1,1,1,0,0,0,0,0,0  ; 行4: █████████
+    DB 1,0,0,0,0,0,0,0,1,0,0,0,0,0,0  ; 行5: █         █
+    DB 1,0,0,0,0,0,0,0,1,0,0,0,0,0,0  ; 行6: █         █
+    DB 1,0,0,0,0,0,0,0,1,0,0,0,0,0,0  ; 行7: █         █
+
+    ; U - 15列 (15-29)
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1  ; 行1: █             █
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1  ; 行2: █             █
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1  ; 行3: █             █
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1  ; 行4: █             █
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1  ; 行5: █             █
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1  ; 行6: █             █
+    DB 0,1,1,1,1,1,1,1,1,1,1,1,1,1,0  ; 行7:  ████████████
+
+    ; A - 15列 (30-44)
+    DB 0,0,0,0,0,0,1,1,1,0,0,0,0,0,0  ; 行1:       ███
+    DB 0,0,0,0,1,1,0,0,0,1,1,0,0,0,0  ; 行2:     ██   ██
+    DB 0,0,0,1,0,0,0,0,0,0,0,1,0,0,0  ; 行3:   █       █
+    DB 0,0,1,0,0,0,0,0,0,0,0,0,1,0,0  ; 行4:  █         █
+    DB 0,1,1,1,1,1,1,1,1,1,1,1,1,1,0  ; 行5: █████████████
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1  ; 行6: █             █
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1  ; 行7: █             █
+
+    ; W - 15列 (45-59)
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1  ; 行1: █             █
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1  ; 行2: █             █
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1  ; 行3: █             █
+    DB 1,0,0,0,0,0,1,0,1,0,0,0,0,0,1  ; 行4: █     █ █     █
+    DB 1,0,0,0,1,0,0,0,0,0,1,0,0,0,1  ; 行5: █   █     █   █
+    DB 0,1,0,1,0,0,0,0,0,0,0,1,0,1,0  ; 行6:  █ █       █ █
+    DB 0,0,1,0,0,0,0,0,0,0,0,0,1,0,0  ; 行7:   █         █
+
+    ; E - 15列 (60-74)
+    DB 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1  ; 行1: ███████████████
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0  ; 行2: █
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0  ; 行3: █
+    DB 1,1,1,1,1,1,1,1,1,1,1,1,1,0,0  ; 行4: █████████████
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0  ; 行5: █
+    DB 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0  ; 行6: █
+    DB 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1  ; 行7: ███████████████
+
+    ; I - 5列 (75-79)
+    DB 1,1,1,1,1  ; 行1: █████
+    DB 0,0,1,0,0  ; 行2:   █
+    DB 0,0,1,0,0  ; 行3:   █
+    DB 0,0,1,0,0  ; 行4:   █
+    DB 0,0,1,0,0  ; 行5:   █
+    DB 0,0,1,0,0  ; 行6:   █
+    DB 1,1,1,1,1  ; 行7: █████
+
+.CODE
+START:
+    MOV AX, @DATA
+    MOV DS, AX
+    
+    ; 设置80x25文本模式
+    MOV AX, 0003H
+    INT 10H
     
     ; 隐藏光标
-    mov ah, 01h
-    mov cx, 2000h
-    int 10h
+    MOV AH, 01H
+    MOV CX, 2000H
+    INT 10H
     
-    ; 设置颜色并清屏
-    mov ax, 0600h    ; AH=06h (滚动窗口), AL=00h (清屏)
-    mov bh, 17h      ; 蓝底白字
-    mov cx, 0000h    ; 左上角 (0,0)
-    mov dx, 184Fh    ; 右下角 (79,24)
-    int 10h
+    ; 清屏为蓝色背景
+    MOV AX, 0600H
+    MOV BH, 17H      ; 蓝底白字
+    MOV CX, 0000H
+    MOV DX, 184FH
+    INT 10H
     
-    ; 显示H (第1-15列)
-    call display_H
-    
-    ; 显示U (第16-30列)
-    call display_U
-    
-    ; 显示A (第31-45列)
-    call display_A
-    
-    ; 显示W (第46-60列)
-    call display_W
-    
-    ; 显示E (第61-75列)
-    call display_E
-    
-    ; 显示I (第76-80列)
-    call display_I
+    ; 在屏幕中央显示HUAWEI
+    CALL DISPLAY_HUAWEI
     
     ; 等待按键
-    mov ah, 00h
-    int 16h
+    MOV AH, 00H
+    INT 16H
     
     ; 返回DOS
-    mov ax, 4C00h
-    int 21h
+    MOV AX, 4C00H
+    INT 21H
 
-; 显示字母H (15列宽度)
-display_H proc
-    mov cx, 7        ; 7行高度
-    mov row, 9       ; 起始行
+; 显示HUAWEI图案
+DISPLAY_HUAWEI PROC
+    MOV SI, OFFSET huawei_pattern
     
-h_loop:
-    push cx
+    ; 起始行号 (垂直居中: (25-7)/2 = 9)
+    MOV DH, 9        ; 行
+    MOV CX, 7        ; 7行
     
-    ; 设置光标位置
-    mov ah, 02h
-    mov bh, 00h
-    mov dh, row      ; 行
-    mov dl, 2        ; 列 (在15列范围内居中)
-    int 10h
+row_loop:
+    PUSH CX
+    PUSH SI
     
-    ; 根据行数显示不同内容
-    mov cx, 1        ; 显示1个字符
+    ; 设置光标行
+    MOV AH, 02H
+    MOV BH, 00H
+    MOV DL, 0        ; 从第0列开始
+    INT 10H
     
-    cmp row, 9       ; 第一行
-    je h_top
-    cmp row, 15      ; 最后一行
-    je h_bottom
-    jmp h_middle
+    ; 显示一行 (80列)
+    MOV CX, 80       ; 80列
+    MOV AH, 0AH      ; 显示字符功能
     
-h_top:
-    mov al, 219      ; 实心方块
-    jmp h_print
+col_loop:
+    CMP BYTE PTR [SI], 1
+    JNE display_space
     
-h_bottom:
-    mov al, 219      ; 实心方块
-    jmp h_print
+    ; 显示实心方块
+    MOV AL, 219      ; █字符
+    MOV BL, 0F0H     ; 黑底白字高亮
+    JMP display_char
     
-h_middle:
-    mov al, 219      ; 实心方块
+display_space:
+    MOV AL, ' '      ; 空格
+    MOV BL, 17H      ; 蓝底白字
     
-h_print:
-    mov ah, 09h
-    mov bl, 0F0h     ; 黑底白字高亮
-    int 10h
+display_char:
+    ; 显示字符
+    PUSH CX
+    MOV CX, 1
+    MOV AH, 09H
+    INT 10H
     
-    ; 在右侧也显示
-    mov ah, 02h
-    mov dl, 12       ; 右侧位置
-    int 10h
+    ; 移动光标到下一列
+    MOV AH, 02H
+    INC DL
+    INT 10H
     
-    mov ah, 09h
-    int 10h
+    POP CX
+    INC SI
+    LOOP col_loop
     
-    ; 中间竖线
-    mov ah, 02h
-    mov dl, 7        ; 中间位置
-    int 10h
+    POP SI
+    ADD SI, 80       ; 移动到下一行数据 (15+15+15+15+15+5=80列)
     
-    mov ah, 09h
-    int 10h
+    POP CX
+    INC DH           ; 下一行
+    LOOP row_loop
     
-    inc row
-    pop cx
-    loop h_loop
-    ret
-display_H endp
+    RET
+DISPLAY_HUAWEI ENDP
 
-; 显示字母U (15列宽度)
-display_U proc
-    mov cx, 7        ; 7行高度
-    mov row, 9       ; 起始行
-    
-u_loop:
-    push cx
-    
-    ; 设置光标位置
-    mov ah, 02h
-    mov bh, 00h
-    mov dh, row      ; 行
-    mov dl, 17       ; 列 (在15列范围内居中)
-    int 10h
-    
-    ; 根据行数显示不同内容
-    mov cx, 1        ; 显示1个字符
-    
-    cmp row, 15      ; 最后一行
-    je u_bottom
-    jmp u_side
-    
-u_side:
-    mov al, 219      ; 实心方块
-    jmp u_print
-    
-u_bottom:
-    mov al, 219      ; 实心方块
-    
-u_print:
-    mov ah, 09h
-    mov bl, 0F0h     ; 黑底白字高亮
-    int 10h
-    
-    ; 在右侧也显示
-    mov ah, 02h
-    mov dl, 27       ; 右侧位置
-    int 10h
-    
-    mov ah, 09h
-    int 10h
-    
-    ; 如果是最后一行，填充底部横线
-    cmp row, 15
-    jne u_skip_bottom
-    
-    mov cx, 9        ; 中间9个字符
-    mov dl, 18       ; 起始列
-u_bottom_loop:
-    mov ah, 02h
-    int 10h
-    
-    mov ah, 09h
-    int 10h
-    
-    inc dl
-    loop u_bottom_loop
-    
-u_skip_bottom:
-    inc row
-    pop cx
-    loop u_loop
-    ret
-display_U endp
-
-; 显示字母A (15列宽度)
-display_A proc
-    mov cx, 7        ; 7行高度
-    mov row, 9       ; 起始行
-    
-a_loop:
-    push cx
-    
-    ; 设置光标位置
-    mov ah, 02h
-    mov bh, 00h
-    mov dh, row      ; 行
-    mov dl, 32       ; 列 (在15列范围内居中)
-    int 10h
-    
-    mov al, 219      ; 实心方块
-    mov cx, 1
-    mov bl, 0F0h     ; 黑底白字高亮
-    
-    ; 显示左侧竖线
-    mov ah, 09h
-    int 10h
-    
-    ; 显示右侧竖线
-    mov ah, 02h
-    mov dl, 42
-    int 10h
-    
-    mov ah, 09h
-    int 10h
-    
-    ; 如果是中间行，显示横线
-    cmp row, 11
-    jne a_skip_middle
-    
-    mov cx, 9        ; 中间9个字符
-    mov dl, 33       ; 起始列
-a_middle_loop:
-    mov ah, 02h
-    int 10h
-    
-    mov ah, 09h
-    int 10h
-    
-    inc dl
-    loop a_middle_loop
-    
-a_skip_middle:
-    inc row
-    pop cx
-    loop a_loop
-    ret
-display_A endp
-
-; 显示字母W (15列宽度)
-display_W proc
-    mov cx, 7        ; 7行高度
-    mov row, 9       ; 起始行
-    
-w_loop:
-    push cx
-    
-    ; 设置光标位置
-    mov ah, 02h
-    mov bh, 00h
-    mov dh, row      ; 行
-    mov dl, 47       ; 列 (在15列范围内居中)
-    int 10h
-    
-    mov al, 219      ; 实心方块
-    mov cx, 1
-    mov bl, 0F0h     ; 黑底白字高亮
-    
-    ; 显示左侧竖线
-    mov ah, 09h
-    int 10h
-    
-    ; 显示右侧竖线
-    mov ah, 02h
-    mov dl, 57
-    int 10h
-    
-    mov ah, 09h
-    int 10h
-    
-    ; 根据行数显示中间部分
-    cmp row, 13
-    jl w_skip_middle
-    cmp row, 15
-    jg w_skip_middle
-    
-    ; 显示中间两个点
-    mov ah, 02h
-    mov dl, 51
-    int 10h
-    
-    mov ah, 09h
-    int 10h
-    
-    mov ah, 02h
-    mov dl, 53
-    int 10h
-    
-    mov ah, 09h
-    int 10h
-    
-w_skip_middle:
-    inc row
-    pop cx
-    loop w_loop
-    ret
-display_W endp
-
-; 显示字母E (15列宽度)
-display_E proc
-    mov cx, 7        ; 7行高度
-    mov row, 9       ; 起始行
-    
-e_loop:
-    push cx
-    
-    ; 设置光标位置
-    mov ah, 02h
-    mov bh, 00h
-    mov dh, row      ; 行
-    mov dl, 62       ; 列 (在15列范围内居中)
-    int 10h
-    
-    mov al, 219      ; 实心方块
-    mov cx, 1
-    mov bl, 0F0h     ; 黑底白字高亮
-    
-    ; 显示左侧竖线
-    mov ah, 09h
-    int 10h
-    
-    ; 根据行数显示横线
-    cmp row, 9       ; 顶行
-    je e_top
-    cmp row, 12      ; 中间行
-    je e_middle
-    cmp row, 15      ; 底行
-    je e_bottom
-    jmp e_next
-    
-e_top:
-    mov cx, 12       ; 顶部横线
-    mov dl, 63
-e_top_loop:
-    mov ah, 02h
-    int 10h
-    
-    mov ah, 09h
-    int 10h
-    
-    inc dl
-    loop e_top_loop
-    jmp e_next
-    
-e_middle:
-    mov cx, 8        ; 中间横线
-    mov dl, 63
-e_middle_loop:
-    mov ah, 02h
-    int 10h
-    
-    mov ah, 09h
-    int 10h
-    
-    inc dl
-    loop e_middle_loop
-    jmp e_next
-    
-e_bottom:
-    mov cx, 12       ; 底部横线
-    mov dl, 63
-e_bottom_loop:
-    mov ah, 02h
-    int 10h
-    
-    mov ah, 09h
-    int 10h
-    
-    inc dl
-    loop e_bottom_loop
-    
-e_next:
-    inc row
-    pop cx
-    loop e_loop
-    ret
-display_E endp
-
-; 显示字母I (5列宽度)
-display_I proc
-    mov cx, 7        ; 7行高度
-    mov row, 9       ; 起始行
-    
-i_loop:
-    push cx
-    
-    ; 设置光标位置
-    mov ah, 02h
-    mov bh, 00h
-    mov dh, row      ; 行
-    mov dl, 78       ; 列 (在5列范围内居中)
-    int 10h
-    
-    mov al, 219      ; 实心方块
-    mov cx, 1
-    mov bl, 0F0h     ; 黑底白字高亮
-    
-    ; 显示竖线
-    mov ah, 09h
-    int 10h
-    
-    inc row
-    pop cx
-    loop i_loop
-    ret
-display_I endp
-
-; 数据段
-row db 0
-
-code ends
-end start
+END START
