@@ -1,4 +1,3 @@
-;简单的，打印一个除数、被除数的商、余数到屏幕上来！
 assume cs:code
 code segment
 start:
@@ -6,7 +5,7 @@ start:
 	call set7c
 	;传递中断的参数
 	mov bx,80
-	mov dx,389;总的数
+	mov dx,329;总的数
 
 	int 7ch
 
@@ -23,7 +22,7 @@ set7c:
 	mov ax,0000h
 	mov es,ax
 	mov di,0200h;目的地址偏移地址	
-	mov cx, offset endint7c-offset int7c
+	mov cx, offset int7c_end - offset int7c
 
 	cld
 	rep movsb;将中断程序写到0000:0200处
@@ -31,7 +30,7 @@ set7c:
 	;再将地址赋到0000:007c处
 	mov ax,0000h
 	mov ds,ax
-	mov di,4*007ch
+	mov di,7ch*4        ; 修正：7ch * 4 = 1F0h
 	mov word ptr [di],0200h		;偏移地址
 	mov word ptr [di+2],0000h	;段地址
 	
@@ -46,19 +45,33 @@ int7c:	;intc7中断程序
 	push cx
 	push bx
 	push dx
+	push es
 
-	;用bx来进行传参表示除法，ax表示商，dx表示总数
-	mov ax,0
+	mov ax,0b800h
+	mov es,ax
+	mov di,160
+
 	call divide
-
-	; 将商转换为ASCII字符显示
-	add al, '0'  ; 转换为ASCII码
 	
-	mov bx,0b800h
-	mov es,bx
-	mov byte ptr es:[320], 'A'
-	mov byte ptr es:[321], 11001010B
 
+	;先显示商
+	add ax, '0'          ;显示为ascii
+	mov byte ptr es:[di], al
+	mov byte ptr es:[di+1], 11000010b      ;红底绿字属性：11000010b
+	add di,2
+
+	;先中间空格
+	mov ax, ' '          ;显示为ascii
+	mov byte ptr es:[di], al
+	mov byte ptr es:[di+1], 11000010b      ;红底绿字属性：11000010b
+	add di,2
+
+	;在显示余数
+	add 	dx, '0'          ;显示为ascii
+	mov byte ptr es:[di], dl
+	mov byte ptr es:[di+1], 11000010b      ;红底绿字属性：11000010b
+	
+	pop es
 	pop dx
 	pop bx
 	pop cx
@@ -66,30 +79,20 @@ int7c:	;intc7中断程序
 	pop ds
 	iret
 
-; 除法子程序：dx ÷ bx，结果商存ax
+;除法，被除数在dx，除数在bx，商在ax，余数在dx(剩下的就是它了)
 divide:
-    push cx      ; 保存cx
-    push dx      ; 保存原始dx值
-    
-    mov cx, dx   ; 将被除数保存到cx
-    mov ax, 0    ; 商清零
-    mov dx, 0    ; 高位清零
-    
-divide_loop:
-    cmp cx, bx   ; 比较被除数和除数
-    jl divide_end ; 如果被除数 < 除数，结束
-    
-    sub cx, bx   ; 被除数 = 被除数 - 除数
-    inc ax       ; 商+1
-    jmp divide_loop
-    
-divide_end:
-    pop dx       ; 恢复原始dx值
-    pop cx       ; 恢复cx
-    ret
+	mov ax,0
+cmp1:
+	cmp dx,bx
+	jl enddivide
+	inc ax
+	sub dx,bx
+	jmp cmp1
+enddivide:	
+	ret
 
-endint7c:
-	nop	;占位符
+int7c_end:  ; 标记中断程序结束
+	nop
 
 code ends
 end start
